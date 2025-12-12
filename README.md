@@ -75,24 +75,34 @@ This project is ideal for:
 ```
 TSI-Telemetry/
 │
+├── LICENSE                   # MIT License
+├── .gitignore               # Build artifacts and credentials
+├── CONTRIBUTING.md          # Contribution guidelines
+├── README.md                # This file
+├── QUICKSTART.md            # Getting started guide
+├── architecture.md          # System architecture
+├── hardware.md              # Bill of materials
+│
 ├── firmware/
-│   ├── hello_car/          # Day 1 BLE test
-│   ├── pid_reader/         # PID parsing logic
-│   └── main/               # Full telemetry system
+│   ├── tsi/                 # Main modular firmware
+│   │   ├── tsi.ino          # Main sketch (65 lines)
+│   │   ├── Config.h         # Configuration constants
+│   │   ├── CarData.h        # Data structures
+│   │   ├── PIDCommands.h    # PID definitions
+│   │   ├── BLEManager.h/.cpp      # BLE connection handling
+│   │   ├── OBDParser.h/.cpp       # OBD-II response parsing
+│   │   └── DisplayManager.h/.cpp  # Serial output formatting
+│   └── tsi_legacy/          # Original monolithic version (206 lines)
 │
 ├── backend/
-│   ├── docker-compose.yml  # InfluxDB + Grafana
-│   └── simulate_car.py     # Mock data generator
+│   ├── docker-compose.yml   # InfluxDB + Grafana
+│   └── simulate_car.py      # Mock data generator
 │
 ├── diagrams/
 │   └── architecture.png
 │
-├── dashboards/
-│   └── telemetry.json      # Grafana dashboard
-│
-└── docs/
-    ├── vw_pids.md          # VW-specific PID codes
-    └── troubleshooting.md  # Common issues
+└── dashboards/
+    └── telemetry.json       # Grafana dashboard
 ```
 
 ---
@@ -117,9 +127,88 @@ TSI-Telemetry/
 
 ---
 
+## Development Roadmap
+
+### Milestone 1: "Hello Car" (Day 1)
+- [x] ESP32 connects to ELM327 via BLE
+- [x] Send `ATZ` reset command
+- [x] Receive any response from OBD adapter
+- [x] Print raw response to Serial Monitor
+
+### Milestone 2: "One Clean Reading" (Day 2-3)
+- [ ] Parse ELM327 response format
+- [ ] Read PID `010C` (Engine RPM)
+- [ ] Convert hex response to readable integer
+- [ ] Print "RPM: 1706" in Serial Monitor
+
+### Milestone 3: "Multiple PIDs" (Week 1)
+- [ ] Read RPM, Speed, Coolant Temp
+- [ ] Implement basic error handling
+- [ ] Handle BLE disconnections gracefully
+- [ ] Poll at 1Hz successfully
+
+### Milestone 4: "WiFi Pipeline" (Week 2)
+- [ ] Connect ESP32 to home WiFi
+- [ ] Send JSON payload to InfluxDB
+- [ ] Basic Grafana dashboard shows live RPM
+- [ ] System survives 10-minute test drive
+
+### Milestone 5: "Production Ready" (Month 2+)
+- [ ] Auto-reconnect BLE/WiFi with exponential backoff
+- [ ] Local buffering during connection loss
+- [ ] 5+ PIDs with priority-based polling
+- [ ] Runs full commute without manual intervention
+- [ ] VW-specific PIDs (boost pressure, fuel trims)
+
+---
+
+## Known Limitations
+
+### Hardware Reality Check
+**ELM327 BLE Adapters:**
+- Cheap clones ($5-10) disconnect randomly every 2-10 minutes
+- Firmware quality varies wildly between units
+- Start cheap for learning, upgrade to Veepeak/Viecar later
+- WiFi OBD adapters more stable (but ESP32 becomes WiFi client)
+
+**ESP32 Quirks:**
+- Metal car body acts as Faraday cage (WiFi range issues)
+- Alternator + ignition coils create electrical noise
+- USB car chargers cut power when ignition off
+- Cold starts cause voltage spikes (add capacitor to VIN)
+
+### OBD-II Protocol Limitations
+**Polling Speed:**
+- Each PID request takes 50-200ms
+- Reading 5 PIDs = 250ms-1s latency minimum
+- CAN bus congestion during high ECU load
+- Start with 1Hz sampling, optimize later
+
+**PID Availability (VW Polo GT TSI specific):**
+- Standard PIDs (Mode 0x01): RPM, Speed, Coolant, Throttle
+- Boost Pressure: NOT a standard PID, requires Mode 0x22 (manufacturer-specific)
+- Fuel Trims: May be blocked during real-time driving on some ECUs
+- Unknown: Your car's ECU must be tested to discover supported PIDs
+
+**Safety & Legal:**
+- OBD-II port is always powered (drains battery if left plugged in)
+- Unplugging during engine operation is safe
+- Don't flash firmware while driving
+- Check local laws on OBD-II logging (usually legal for personal use)
+
+### Data Volume
+At 1Hz sampling with 6 PIDs:
+- ~100 bytes per reading
+- ~360KB per hour of driving
+- ~8.6MB per day (24h continuous)
+
+**Recommendation:** InfluxDB retention policy (7 days raw, downsampled for history)
+
+---
+
 ## Contributing
 
-This is a learning project—contributions and shared knowledge are welcome!
+This is a learning project—contributions and shared knowledge are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 **Ways to contribute:**
 - Share your car's supported PID list
