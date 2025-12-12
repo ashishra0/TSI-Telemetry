@@ -59,48 +59,44 @@ Sketch → Include Library → Manage Libraries:
 - HTTPClient (built-in)
 ```
 
-#### 3. Flash "Hello Car" test code
-```cpp
-// hello_car.ino
-#include <BluetoothSerial.h>
+#### 3. Understanding the Firmware Structure
 
-BluetoothSerial BT;
+The TSI telemetry firmware is organized into multiple files for better maintainability:
 
-void setup() {
-    Serial.begin(115200);
-    Serial.println("Starting BLE...");
-    
-    BT.begin("ESP32", true); // Master mode
-    
-    // Replace "OBDII" with your adapter's name
-    // Common names: "OBDII", "OBD2", "ELM327", "V-LINK"
-    bool connected = BT.connect("OBDII");
-    
-    if (connected) {
-        Serial.println("Connected to OBD adapter!");
-    } else {
-        Serial.println("Failed to connect. Check adapter name.");
-    }
-}
-
-void loop() {
-    if (BT.connected()) {
-        Serial.println("Sending ATZ (reset)...");
-        BT.println("ATZ");
-        delay(2000);
-        
-        // Read any response
-        while (BT.available()) {
-            Serial.write(BT.read());
-        }
-        Serial.println();
-    }
-    
-    delay(5000);
-}
+```
+firmware/tsi/
+├── tsi.ino              # Main sketch (open this in Arduino IDE)
+├── Config.h             # Configuration constants
+├── CarData.h            # Data structures
+├── PIDCommands.h        # PID definitions
+├── BLEManager.h/.cpp    # BLE connection handling
+├── OBDParser.h/.cpp     # OBD-II parsing
+└── DisplayManager.h/.cpp # Serial output
 ```
 
-#### 4. Test in car
+Arduino IDE automatically compiles all .cpp/.h files in the sketch folder, so you just need to open `tsi.ino` and click Upload.
+
+#### 4. Configure OBD Adapter Address
+
+Before uploading, you may need to update the OBD adapter address in `Config.h`:
+
+```cpp
+// firmware/tsi/Config.h
+#define OBD_ADDRESS "00:33:cc:4f:36:03"  // Replace with your adapter's MAC address
+```
+
+To find your adapter's MAC address, use a Bluetooth scanner app on your phone or run a BLE scan sketch on the ESP32.
+
+#### 5. Upload and Test
+
+1. Open `firmware/tsi/tsi.ino` in Arduino IDE
+2. Select your ESP32 board (Tools → Board → ESP32 Dev Module)
+3. Select the correct port (Tools → Port)
+4. Click Upload
+5. Open Serial Monitor (115200 baud)
+6. You should see "Starting TSI Telemetry..." and connection messages
+
+#### 6. Test in car
 1. Plug OBD adapter into car's OBD-II port (usually under steering wheel)
 2. Turn ignition to ON (don't start engine yet)
 3. Plug ESP32 into USB car charger
@@ -108,5 +104,34 @@ void loop() {
 5. Look for: `ELM327 v1.5` or similar response
 
 **Success criteria:** Any response from adapter means BLE works!
+
+---
+
+## Troubleshooting
+
+### BLE Won't Connect
+```cpp
+// Try scanning for devices first
+BT.begin("ESP32", true);
+BTScanResults* results = BT.getScanResults();
+for (int i = 0; i < results->getCount(); i++) {
+    Serial.println(results->getDevice(i)->getName().c_str());
+}
+```
+
+### OBD Adapter Not Responding
+- Try `ATZ` (reset), `ATSP0` (auto protocol), `0100` (supported PIDs)
+- Some adapters need `\r` line endings: `BT.print("ATZ\r")`
+- Wait 2 seconds after reset before sending commands
+
+### WiFi Disconnects
+- Car metal body blocks signal
+- Move WiFi router closer or add external antenna to ESP32
+- Implement reconnection logic (don't block main loop)
+
+### Wrong PID Values
+- Double-check parsing: RPM = `(A*256 + B) / 4`
+- ELM327 returns: `41 0C 1A 2B` → RPM = `(0x1A*256 + 0x2B) / 4 = 1706`
+- Some PIDs are single-byte, some are two-byte
 
 ---
