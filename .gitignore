@@ -1,0 +1,46 @@
+# Arduino/ESP32 Build Artifacts
+*.hex
+*.elf
+*.bin
+*.map
+build/
+*.d
+*.o
+
+# Arduino IDE
+*.swp
+*~
+
+# VS Code / PlatformIO
+.vscode/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Python (for backend simulator)
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# IDE
+.idea/
+*.iml
+
+# Credentials (important for OBD address)
+credentials.h
+secrets.h
