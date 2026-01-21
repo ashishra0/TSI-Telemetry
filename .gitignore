@@ -23,6 +23,7 @@ __pycache__/
 *.pyo
 venv/
 .env
+bridge/.env
 
 # macOS
 .DS_Store
@@ -41,6 +42,7 @@ venv/
 .idea/
 *.iml
 
-# Credentials (important for OBD address)
+# Credentials (important for OBD address and WiFi/MQTT)
 credentials.h
+Credentials.h
 secrets.h
